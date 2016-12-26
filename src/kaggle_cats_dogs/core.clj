@@ -24,7 +24,7 @@
 ;;particular resources to be available.  We ensure this with a makefile.
 (def ^:dynamic *running-from-repl* true)
 
-(def dataset-image-size 28)
+(def dataset-image-size 52)
 (def dataset-num-classes 2)
 (def dataset-num-channels 3)
 (def dataset-datatype :float)
@@ -154,7 +154,7 @@
    (ds/create-image-shape dataset-num-channels dataset-image-size dataset-image-size)
    (partial observation-label-pairs true dataset-datatype)
    (partial observation-label-pairs false dataset-datatype)
-   :epoch-element-count 60000
+   :epoch-element-count 6000
    :shuffle-training-epochs? (> *num-augmented-images-per-file* 2)))
 
 
