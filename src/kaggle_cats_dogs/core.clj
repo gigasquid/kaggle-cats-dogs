@@ -33,7 +33,6 @@
 (def training-dir "data-cats-dogs/training")
 (def testing-dir "data-cats-dogs/testing")
 
-
 (defn produce-indexed-data-label-seq
   [files]
   (->> (map (fn [file] [file (-> (.getName file) (string/split #"\.") first)]) files)
@@ -68,7 +67,6 @@
     (dorun (pmap train-fn training-observation-label-seq))
     (dorun (pmap test-fn training-observation-label-seq))))
 
-
 (defn create-basic-network-description
   []
   [(desc/input dataset-image-size dataset-image-size dataset-num-channels)
@@ -84,7 +82,6 @@
    (desc/dropout 0.5)
    (desc/linear->softmax dataset-num-classes)])
 
-
 (def max-image-rotation-degrees 25)
 
 (defn img-aug-pipeline
@@ -94,7 +91,6 @@
                            max-image-rotation-degrees)
                         false)
       (image-aug/inject-noise (* 0.25 (rand)))))
-
 
 (defn png->observation
   "Create an observation from input.  "
@@ -117,7 +113,6 @@
 ;;to shuffle the training epoch data to keep your batches from being unbalanced...this has
 ;;somewhat severe performance impacts.
 (def ^:dynamic *num-augmented-images-per-file* 1)
-
 
 (defn observation-label-pairs
   "Create a possibly infinite sequence of [observation label].
@@ -143,7 +138,6 @@
           (repeatedly repeat-count png->obs)
           (repeat label))))
 
-
 (defn create-dataset
   []
   (println "checking that we have produced all images")
@@ -157,12 +151,9 @@
    :epoch-element-count 6000
    :shuffle-training-epochs? (> *num-augmented-images-per-file* 2)))
 
-
-
 (defn load-trained-network-desc
   []
   (:network-description (suite-io/read-nippy-file "trained-network.nippy")))
-
 
 (defn display-dataset-and-model
   ([dataset initial-description]
@@ -189,7 +180,6 @@
    (display-dataset-and-model (create-dataset) (create-basic-network-description))
    nil))
 
-
 (defn train-forever
   []
   (let [dataset (create-dataset)
@@ -199,12 +189,10 @@
                                   initial-description
                                   :confusion-matrix-atom confusion-matrix-atom)))
 
-
 (defn train-forever-uberjar
   []
   (with-bindings {#'*running-from-repl* false}
     (train-forever)))
-
 
 (defn label-one
   "Take an arbitrary image and label it."
@@ -223,7 +211,6 @@
                                                            dataset-image-size)
                                     dataset-datatype
                                     (classification/get-class-names-from-directory testing-dir))))
-
 
 (defn kaggle-png-to-test-observation-pairs [file]
   (let [id (-> (.getName file) (string/split #"\.") (first))]
@@ -256,7 +243,6 @@
                    (into [["id" "label"]]
                          (-> (mapv (fn [[id class]] [(Integer/parseInt id) (if (= "dog" class) 1 0)]) results)
                              (sort))))))
-
 
 (comment
 
