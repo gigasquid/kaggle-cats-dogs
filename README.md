@@ -5,6 +5,10 @@ Code for The [Kaggle Cats and Dogs](https://www.kaggle.com/c/dogs-vs-cats-redux-
 
 A blog post covering it [http://gigasquidsoftware.com/blog/2016/12/27/deep-learning-in-clojure-with-cortex/](http://gigasquidsoftware.com/blog/2016/12/27/deep-learning-in-clojure-with-cortex/)
 
+## Usage
+
+Get the datasets from the above Kaggle Site. Download the `train.zip` and `test.zip` to the resources directory and unzip them.
+
 ## License
 
 Copyright © 2016 Carin Meier
