@@ -1,5 +1,6 @@
 (ns kaggle-cats-dogs.core
-  (:require [clojure.java.io :as io]
+  (:require [clojure.data.csv :as csv]
+            [clojure.java.io :as io]
             [clojure.string :as string]
             [cortex.dataset :as ds]
             [cortex.nn.description :as desc]
@@ -15,8 +16,7 @@
             [think.image.image :as image]
             [think.image.image-util :as image-util]
             [think.image.patch :as patch]
-            [think.compute.optimise :as opt]
-            [clojure.data.csv :as csv]))
+            [think.compute.optimise :as opt]))
 
 ;;We have to setup the web server slightly different when running
 ;;from the repl; we enable live updates using figwheel and such.  When
