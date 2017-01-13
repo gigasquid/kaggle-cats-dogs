@@ -176,11 +176,19 @@
           id-observation-pairs
           results)))
 
+(defn score [val]
+ ;; clipping for better kaggle result
+  (cond
+    (>= val 0.95) 0.95
+    (<= val 0.05) 0.05
+    :else val))
+
 (defn write-kaggle-results [results]
   (with-open [out-file (io/writer "kaggle-results.csv")]
     (csv/write-csv out-file
                    (into [["id" "label"]]
-                         (-> (mapv (fn [[id {:keys [prob class]}]] [(Integer/parseInt id) (if (= "dog" class) prob (- 1 prob))]) results)
+                         (-> (mapv (fn [[id {:keys [prob class]}]]
+                                     [(Integer/parseInt id) (if (= "dog" class) (score prob) (score (- 1 prob)))]) results)
                              (sort))))))
 
 
@@ -279,4 +287,5 @@
 
   (label-one)
   (-> (classify-kaggle-tests)
-      (write-kaggle-results)))
+      (write-kaggle-results))
+)
