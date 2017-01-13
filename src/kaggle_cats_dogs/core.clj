@@ -1,26 +1,25 @@
 (ns kaggle-cats-dogs.core
-(:require [clojure.java.io :as io]
-          [clojure.string :as string]
-          [clojure.data.csv :as csv]
-          [mikera.vectorz.matrix-api] ;; loading this namespace enables vectorz implementation for core.matrix
-          [mikera.image.core :as imagez]
-          [think.image.image :as image]
-          [think.image.patch :as patch]
-          [think.image.data-augmentation :as image-aug]
-          [think.compute.optimise :as opt]
-          [cortex.nn.layers :as layers]
-          [think.image.image-util :as image-util]
-          [clojure.core.matrix.macros :refer [c-for]]
-          [clojure.core.matrix :as m]
-          [cortex.dataset :as ds]
-          [cortex.suite.classification :as classification]
-          [cortex.suite.inference :as infer]
-          [cortex.suite.io :as suite-io]
-          [cortex.suite.train :as suite-train]
-          [cortex.loss :as loss]
-          [think.gate.core :as gate]
-          [think.parallel.core :as parallel])
-(:import [java.io File]))
+  (:require [clojure.java.io :as io]
+            [clojure.string :as string]
+            [clojure.data.csv :as csv]
+            [mikera.vectorz.matrix-api] ;; loading this namespace enables vectorz implementation for core.matrix
+            [mikera.image.core :as imagez]
+            [think.image.image :as image]
+            [think.image.patch :as patch]
+            [think.image.data-augmentation :as image-aug]
+            [think.compute.optimise :as opt]
+            [cortex.nn.layers :as layers]
+            [think.image.image-util :as image-util]
+            [clojure.core.matrix.macros :refer [c-for]]
+            [clojure.core.matrix :as m]
+            [cortex.dataset :as ds]
+            [cortex.suite.classification :as classification]
+            [cortex.suite.inference :as infer]
+            [cortex.suite.io :as suite-io]
+            [cortex.suite.train :as suite-train]
+            [cortex.loss :as loss]
+            [think.gate.core :as gate]
+            [think.parallel.core :as parallel]))
 
 ;;We have to setup the web server slightly different when running
 ;;from the repl; we enable live updates using figwheel and such.  When
@@ -157,9 +156,9 @@
 (defn kaggle-png-to-test-observation-pairs [file]
   (let [id (-> (.getName file) (string/split #"\.") (first))]
     (as-> (imagez/load-image file) $
-        (image/resize $ image-size image-size)
-        (png->observation datatype false $)
-        (vector id $))))
+      (image/resize $ image-size image-size)
+      (png->observation datatype false $)
+      (vector id $))))
 
 (defn classify-kaggle-tests []
   (let [id-observation-pairs  (map kaggle-png-to-test-observation-pairs (gather-files "resources/test"))
@@ -237,7 +236,7 @@
                       :clj-css-path "src/css"
                       :live-updates? *running-from-repl*
                       :port 8091)]
-              (println open-message))
+       (println open-message))
      confusion-matrix-atom))
   ([]
    (display-dataset-and-model (create-dataset))))
@@ -278,6 +277,6 @@
 
 (comment
 
+  (label-one)
   (-> (classify-kaggle-tests)
-      (write-kaggle-results))
-)
+      (write-kaggle-results)))
