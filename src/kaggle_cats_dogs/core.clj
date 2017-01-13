@@ -1,22 +1,26 @@
 (ns kaggle-cats-dogs.core
-  (:require [clojure.data.csv :as csv]
-            [clojure.java.io :as io]
-            [clojure.string :as string]
-            [cortex.dataset :as ds]
-            [cortex.nn.description :as desc]
-            [cortex.suite.classification :as classification]
-            [cortex.suite.inference :as infer]
-            [cortex.suite.io :as suite-io]
-            [cortex.suite.train :as suite-train]
-            [mikera.image.core :as imagez]
-            [mikera.vectorz.matrix-api] ;; loading this namespace enables vectorz implementation for core.matrix
-            [think.compute.nn.train :as train]
-            [think.gate.core :as gate]
-            [think.image.data-augmentation :as image-aug]
-            [think.image.image :as image]
-            [think.image.image-util :as image-util]
-            [think.image.patch :as patch]
-            [think.compute.optimise :as opt]))
+(:require [clojure.java.io :as io]
+          [clojure.string :as string]
+          [clojure.data.csv :as csv]
+          [mikera.vectorz.matrix-api] ;; loading this namespace enables vectorz implementation for core.matrix
+          [mikera.image.core :as imagez]
+          [think.image.image :as image]
+          [think.image.patch :as patch]
+          [think.image.data-augmentation :as image-aug]
+          [think.compute.optimise :as opt]
+          [cortex.nn.layers :as layers]
+          [think.image.image-util :as image-util]
+          [clojure.core.matrix.macros :refer [c-for]]
+          [clojure.core.matrix :as m]
+          [cortex.dataset :as ds]
+          [cortex.suite.classification :as classification]
+          [cortex.suite.inference :as infer]
+          [cortex.suite.io :as suite-io]
+          [cortex.suite.train :as suite-train]
+          [cortex.loss :as loss]
+          [think.gate.core :as gate]
+          [think.parallel.core :as parallel])
+(:import [java.io File]))
 
 ;;We have to setup the web server slightly different when running
 ;;from the repl; we enable live updates using figwheel and such.  When
@@ -24,10 +28,10 @@
 ;;particular resources to be available.  We ensure this with a makefile.
 (def ^:dynamic *running-from-repl* true)
 
-(def dataset-image-size 52)
-(def dataset-num-classes 2)
-(def dataset-num-channels 3)
-(def dataset-datatype :float)
+(def image-size 52)
+(def num-classes 2)
+(def num-channels 3)
+(def datatype :float)
 (def max-image-rotation-degrees 25)
 (def original-data-dir "resources/train")
 (def training-dir "data-cats-dogs/training")
@@ -44,7 +48,7 @@
     (when-not (.exists (io/file img-path))
       (io/make-parents img-path)
       (-> (imagez/load-image file)
-          (image/resize dataset-image-size dataset-image-size)
+          (image/resize image-size image-size)
           (imagez/save img-path)))
     nil))
 
@@ -67,20 +71,19 @@
     (dorun (pmap train-fn training-observation-label-seq))
     (dorun (pmap test-fn training-observation-label-seq))))
 
-(defn create-basic-network-description
-  []
-  [(desc/input dataset-image-size dataset-image-size dataset-num-channels)
-   (desc/convolutional 5 0 1 20)
-   (desc/max-pooling 2 0 2)
-   (desc/relu)
-   (desc/convolutional 5 0 1 50)
-   (desc/max-pooling 2 0 2)
-   (desc/relu)
-   (desc/convolutional 1 0 1 50)
-   (desc/relu)
-   (desc/linear->relu 1000)
-   (desc/dropout 0.5)
-   (desc/linear->softmax dataset-num-classes)])
+(def initial-network
+  [(layers/input image-size image-size num-channels)
+   (layers/convolutional 5 0 1 20)
+   (layers/max-pooling 2 0 2)
+   (layers/relu)
+   (layers/convolutional 5 0 1 50)
+   (layers/max-pooling 2 0 2)
+   (layers/relu)
+   (layers/convolutional 1 0 1 50)
+   (layers/relu)
+   (layers/linear->relu 1000)
+   (layers/dropout 0.5)
+   (layers/linear->softmax num-classes)])
 
 (def max-image-rotation-degrees 25)
 
@@ -106,7 +109,7 @@
 
 (defn observation->image
   [observation]
-  (patch/patch->image observation dataset-image-size))
+  (patch/patch->image observation image-size))
 
 
 ;;Bumping this up and producing several images per source image means that you may need
@@ -145,78 +148,17 @@
   (println "building dataset")
   (classification/create-classification-dataset-from-labeled-data-subdirs
    training-dir testing-dir
-   (ds/create-image-shape dataset-num-channels dataset-image-size dataset-image-size)
-   (partial observation-label-pairs true dataset-datatype)
-   (partial observation-label-pairs false dataset-datatype)
+   (ds/create-image-shape num-channels image-size image-size)
+   (partial observation-label-pairs true datatype)
+   (partial observation-label-pairs false datatype)
    :epoch-element-count 6000
    :shuffle-training-epochs? (> *num-augmented-images-per-file* 2)))
-
-(defn load-trained-network-desc
-  []
-  (:network-description (suite-io/read-nippy-file "trained-network.nippy")))
-
-(defn display-dataset-and-model
-  ([dataset initial-description]
-   (let [data-display-atom (atom {})
-         confusion-matrix-atom (atom {})]
-     (classification/reset-dataset-display data-display-atom dataset observation->image)
-     (when-let [loaded-data (suite-train/load-network "trained-network.nippy"
-                                                      initial-description)]
-       (classification/reset-confusion-matrix confusion-matrix-atom observation->image
-                                              (suite-train/evaluate-network
-                                               dataset
-                                               (:network-description loaded-data)
-                                               :batch-type :cross-validation)))
-     (let [open-message
-           (gate/open (atom
-                       (classification/create-routing-map confusion-matrix-atom
-                                                          data-display-atom))
-                      :clj-css-path "src/css"
-                      :live-updates? *running-from-repl*
-                      :port 8091)]
-       (println open-message))
-     confusion-matrix-atom))
-  ([]
-   (display-dataset-and-model (create-dataset) (create-basic-network-description))
-   nil))
-
-(defn train-forever
-  []
-  (let [dataset (create-dataset)
-        initial-description (create-basic-network-description)
-        confusion-matrix-atom (display-dataset-and-model dataset initial-description)]
-    (classification/train-forever dataset observation->image
-                                  initial-description
-                                  :confusion-matrix-atom confusion-matrix-atom)))
-
-(defn train-forever-uberjar
-  []
-  (with-bindings {#'*running-from-repl* false}
-    (train-forever)))
-
-(defn label-one
-  "Take an arbitrary image and label it."
-  []
-  (let [file-label-pairs (shuffle (classification/directory->file-label-seq testing-dir
-                                                                            false))
-        [test-file test-label] (first file-label-pairs)
-        test-img (imagez/load-image test-file)
-        observation (png->observation dataset-datatype false test-img)]
-    (imagez/show test-img)
-    (infer/classify-one-observation (:network-description
-                                     (suite-io/read-nippy-file "trained-network.nippy"))
-                                    observation
-                                    (ds/create-image-shape dataset-num-channels
-                                                           dataset-image-size
-                                                           dataset-image-size)
-                                    dataset-datatype
-                                    (classification/get-class-names-from-directory testing-dir))))
 
 (defn kaggle-png-to-test-observation-pairs [file]
   (let [id (-> (.getName file) (string/split #"\.") (first))]
     (as-> (imagez/load-image file) $
-        (image/resize $ dataset-image-size dataset-image-size)
-        (png->observation dataset-datatype false $)
+        (image/resize $ image-size image-size)
+        (png->observation datatype false $)
         (vector id $))))
 
 (defn classify-kaggle-tests []
@@ -227,12 +169,12 @@
         results (infer/infer-n-observations (:network-description
                                              (suite-io/read-nippy-file "trained-network.nippy"))
                                             observations
-                                            (ds/create-image-shape dataset-num-channels
-                                                                   dataset-image-size
-                                                                   dataset-image-size)
-                                            dataset-datatype)]
+                                            (ds/create-image-shape num-channels
+                                                                   image-size
+                                                                   image-size)
+                                            datatype)]
      (mapv (fn [x y] [(first x) (->> (vec y)
-                                   (opt/max-index)
+                                   (loss/max-index)
                                    (get class-names))])
           id-observation-pairs
           results)))
@@ -244,7 +186,112 @@
                          (-> (mapv (fn [[id class]] [(Integer/parseInt id) (if (= "dog" class) 1 0)]) results)
                              (sort))))))
 
+
+;;;;;;;;;
+
+(defonce ensure-dataset-is-created
+  (memoize
+   (fn []
+     (println "checking that we have produced all images")
+     (build-image-data))))
+
+
+(defonce create-dataset
+  (memoize
+   (fn
+     []
+     (ensure-dataset-is-created)
+     (println "building dataset")
+     (classification/create-classification-dataset-from-labeled-data-subdirs
+      training-dir testing-dir
+      (ds/create-image-shape num-channels image-size image-size)
+      (partial observation-label-pairs true datatype)
+      (partial observation-label-pairs false datatype)
+      :epoch-element-count 6000
+      :shuffle-training-epochs? (> *num-augmented-images-per-file* 2)))))
+
+
+
+(defn load-trained-network
+  []
+  (suite-io/read-nippy-file "trained-network.nippy"))
+
+
+(defn display-dataset-and-model
+  ([dataset]
+   (let [initial-description initial-network
+         data-display-atom (atom {})
+         confusion-matrix-atom (atom {})]
+     (classification/reset-dataset-display data-display-atom dataset observation->image)
+     (when-let [loaded-data (suite-train/load-network "trained-network.nippy"
+                                                      initial-description)]
+       (classification/reset-confusion-matrix confusion-matrix-atom observation->image
+                                              dataset
+                                              (suite-train/evaluate-network
+                                               dataset
+                                               loaded-data
+                                               :batch-type :cross-validation)))
+
+     (let [open-message
+           (gate/open (atom
+                       (classification/create-routing-map confusion-matrix-atom
+                                                          data-display-atom))
+                      :clj-css-path "src/css"
+                      :live-updates? *running-from-repl*
+                      :port 8091)]
+              (println open-message))
+     confusion-matrix-atom))
+  ([]
+   (display-dataset-and-model (create-dataset))))
+
+(def ^:dynamic *run-from-nippy* true)
+
+
+(defn train-forever
+  []
+  (let [dataset (create-dataset)
+        confusion-matrix-atom (display-dataset-and-model dataset)]
+    (classification/train-forever dataset observation->image
+                                  initial-network
+                                  :confusion-matrix-atom confusion-matrix-atom)))
+
+
+(defn train-forever-uberjar
+  []
+  (with-bindings {#'*running-from-repl* false}
+    (train-forever)))
+
+
+(defn label-one
+  "Take an arbitrary image and label it."
+  []
+  (let [file-label-pairs (shuffle (classification/directory->file-label-seq testing-dir
+                                                                            false))
+        [test-file test-label] (first file-label-pairs)
+        test-img (imagez/load-image test-file)
+        observation (png->observation datatype false test-img)]
+    (imagez/show test-img)
+    (infer/classify-one-observation (suite-io/read-nippy-file "trained-network.nippy")
+                                    observation (ds/create-image-shape num-channels
+                                                                       image-size
+                                                                       image-size)
+                                    (classification/get-class-names-from-directory testing-dir))))
+
+
 (comment
+
+  (def x (last (kaggle-png-to-test-observation-pairs (io/file "resources/unknown.jpg"))))
+
+ {:probability-map {"cat" 0.9942012429237366, "dog" 0.005798777565360069}, :classification "cat"}
+
+  (infer/classify-one-observation (:network-description
+                                     (suite-io/read-nippy-file "trained-network.nippy"))
+                                    [x]
+                                    (ds/create-image-shape dataset-num-channels
+                                                           dataset-image-size
+                                                           dataset-image-size)
+                                    dataset-datatype
+                                    (classification/get-class-names-from-directory testing-dir))
 
   (label-one)
 
