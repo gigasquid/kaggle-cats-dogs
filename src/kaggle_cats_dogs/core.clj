@@ -166,16 +166,14 @@
         class-names (classification/get-class-names-from-directory testing-dir)
         observations (mapv second id-observation-pairs)
         class-names (classification/get-class-names-from-directory testing-dir)
-        results (infer/infer-n-observations (:network-description
-                                             (suite-io/read-nippy-file "trained-network.nippy"))
+        results (infer/infer-n-observations (suite-io/read-nippy-file "trained-network.nippy")
                                             observations
                                             (ds/create-image-shape num-channels
                                                                    image-size
-                                                                   image-size)
-                                            datatype)]
-     (mapv (fn [x y] [(first x) (->> (vec y)
-                                   (loss/max-index)
-                                   (get class-names))])
+                                                                   image-size))]
+    (mapv (fn [x y] [(first x) (let [r (vec y)
+                                    r-idx (loss/max-index r)]
+                                {:prob (get r r-idx) :class (get class-names r-idx)})])
           id-observation-pairs
           results)))
 
@@ -183,7 +181,7 @@
   (with-open [out-file (io/writer "kaggle-results.csv")]
     (csv/write-csv out-file
                    (into [["id" "label"]]
-                         (-> (mapv (fn [[id class]] [(Integer/parseInt id) (if (= "dog" class) 1 0)]) results)
+                         (-> (mapv (fn [[id {:keys [prob class]}]] [(Integer/parseInt id) (if (= "dog" class) prob (- 1 prob))]) results)
                              (sort))))))
 
 
@@ -279,21 +277,6 @@
 
 
 (comment
-
-  (def x (last (kaggle-png-to-test-observation-pairs (io/file "resources/unknown.jpg"))))
-
- {:probability-map {"cat" 0.9942012429237366, "dog" 0.005798777565360069}, :classification "cat"}
-
-  (infer/classify-one-observation (:network-description
-                                     (suite-io/read-nippy-file "trained-network.nippy"))
-                                    [x]
-                                    (ds/create-image-shape dataset-num-channels
-                                                           dataset-image-size
-                                                           dataset-image-size)
-                                    dataset-datatype
-                                    (classification/get-class-names-from-directory testing-dir))
-
-  (label-one)
 
   (-> (classify-kaggle-tests)
       (write-kaggle-results))
