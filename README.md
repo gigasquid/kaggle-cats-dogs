@@ -9,6 +9,8 @@ A blog post covering it [http://gigasquidsoftware.com/blog/2016/12/27/deep-learn
 
 Get the datasets from the above Kaggle Site. Download the `train.zip` and `test.zip` to the resources directory and unzip them.
 
+This example has been recently updated to cortex's master version, so to run it you will need to clone the cortex project and run the local-install script.
+
 ## License
 
 Copyright © 2016 Carin Meier
