@@ -1,32 +1,106 @@
-td.class-header {
+body {
+  font-family: Monospace;
+  font-size: 14px;
+  margin: 60px 30px;
+}
+
+body div.title {
+  font-size: 40px;
+  margin: 40px 0 40px 80px;
+}
+
+body div.confusion {
+  margin-bottom: 60px;
+}
+
+body div.confusion div.confusion-matrix {
+  display: inline-block;
+  vertical-align: top;
+}
+
+body div.confusion div.confusion-matrix table.confusion-matrix {
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+body div.confusion div.confusion-matrix table.confusion-matrix td.class-header {
   text-align: center;
 }
 
-td.item-header {
+body div.confusion div.confusion-matrix table.confusion-matrix td.class-header.top {
+  padding-bottom: 40px;
+  font-weight: bold;
+}
+
+body div.confusion div.confusion-matrix table.confusion-matrix td.class-header.left {
+  font-weight: bold;
+  transform: rotate(-90deg);
+  -webkit-transform: rotate(-90deg);
+  -moz-transform: rotate(-90deg);
+  -ms-transform: rotate(-90deg);
+  -o-transform: rotate(-90deg);
+}
+
+body div.confusion div.confusion-matrix table.confusion-matrix td.item-header {
   text-align: center;
 }
 
-td.item-value {
+body div.confusion div.confusion-matrix table.confusion-matrix td.item-header.left-row {
+  text-align: right;
+  padding-right: 25px;
+  border-right: solid 1px #222;
+}
+
+body div.confusion div.confusion-matrix table.confusion-matrix td.item-header.top-row {
+  padding-bottom: 12px;
+  border-bottom: solid 1px #222;
+}
+
+body div.confusion div.confusion-matrix table.confusion-matrix td.item-value {
+  padding: 12px;
   text-align: center;
   cursor: pointer;
   color: #228;
 }
 
-div.batch-column {
+body div.confusion div.confusion-matrix table.confusion-matrix td.item-value:hover {
+  background-color: #e0e0e0;
+}
+
+body div.confusion div.confusion-matrix td.bottom-row {
+  padding-left: 10px;
+}
+
+body div.confusion div.confusion-matrix td.bottom-row.last {
+  padding-right: 25px;
+  border-right: solid 1px #222;
+  text-align: right;
+}
+
+body div.confusion div.confusion-matrix td.end-column {
+  padding-left: 10px;
+}
+
+body div.confusion div.confusion-detail {
   display: inline-block;
-  border: solid #228 2px;
-  box-sizing: border-box;
-  vertical-align: top;
+  margin: 50px 0 0 80px;
 }
 
-div.detail-confidence {
-  text-align: center;
+body div.confusion div.confusion-detail td.detail {
+  padding: 0 20px 20px 0;
 }
 
-div.batch-name {
-  text-align: center;
+body div.dataset {
+  margin-left: 80px;
 }
 
-div.dataset-label {
-  text-align: center;
+body div.dataset div.batch-column {
+  margin-right: 50px;
+  display: inline-block;
+}
+
+body div.dataset div.batch-column div.batch-name {
+  margin-bottom: 10px;
+  border-bottom: solid;
+  font-weight: bold;
 }
